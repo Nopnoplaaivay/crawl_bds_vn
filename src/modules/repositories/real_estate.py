@@ -19,7 +19,7 @@ class RealEstateRepo(BaseRepo[RealEstate]):
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     status TEXT NOT NULL,
                     type TEXT NOT NULL,
-                    name TEXT NOT NULL,
+                    title TEXT NOT NULL,
                     location TEXT NOT NULL,
                     price REAL NOT NULL,
                     area REAL NOT NULL,
