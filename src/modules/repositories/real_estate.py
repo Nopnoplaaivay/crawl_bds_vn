@@ -1,6 +1,6 @@
 import os
 
-from src.entities import RealEstate
+from src.modules.entities import RealEstate
 from src.base.repositories import BaseRepo
 from src.common.consts import CommonConsts
 
