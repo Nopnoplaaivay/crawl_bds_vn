@@ -1,6 +1,5 @@
 # IDE
 .idea
-geckodriver.log
 # venv
 venv
 
@@ -14,6 +13,5 @@ venv
 # other
 temp
 
-
-build
-dist
+# data
+*.db
