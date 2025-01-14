@@ -18,6 +18,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from src.common.consts import CommonConsts
 from src.modules.entities.real_estate import RealEstate
 from src.modules.repositories import RealEstateRepo
+from src.utils.logger import LOGGER
 
 
 class RealEstateService:
@@ -45,5 +46,9 @@ class RealEstateService:
         for i in np.arange(0, len(link_all), 1):
             real_estate_type = CommonConsts.REAL_ESTATE_TYPES[i]
             driver.get(link_all[i])
-            
+            time.sleep(2)
+            total_page_str = driver.find_elements(By.CSS_SELECTOR, ".re__pagination-number")[-1].text
+            total_page = int(total_page_str.split(" ")[-1])
+            LOGGER.info(f"Total page of {real_estate_type}: {total_page}")
+
 
