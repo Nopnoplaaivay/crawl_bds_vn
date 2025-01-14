@@ -23,8 +23,8 @@ class RealEstateRepo(BaseRepo[RealEstate]):
                     location TEXT NOT NULL,
                     price REAL NOT NULL,
                     area REAL NOT NULL,
-                    description TEXT,
-                    link TEXT,
+                    desc TEXT,
+                    url TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')

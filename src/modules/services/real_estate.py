@@ -34,7 +34,7 @@ class RealEstateService:
         options.add_argument("--log-level=3")  # Suppress logs
         options.add_argument("--disable-logging")  # Disable logging
         options.add_argument("--silent")  # Silent mode
-        options.add_argument("headless")
+        # options.add_argument("headless")
         options.add_argument("window-size=1920x1080")
         options.add_argument("disable-gpu")
         service = Service(executable_path=ChromeDriverManager().install())
@@ -77,9 +77,6 @@ class RealEstateService:
                         price = re.find_element(By.CSS_SELECTOR, ".re__card-config-price.js__card-config-item").text
                         area = re.find_element(By.CSS_SELECTOR, ".re__card-config-area.js__card-config-item").text
                         desc = re.find_element(By.CSS_SELECTOR, ".re__card-description.js__card-description").text
-                        span_elem = desc.find_element(By.CSS_SELECTOR, "span")
-                        if span_elem:
-                            desc = desc.replace(span_elem.text, "")
                         url = re.find_element(By.CSS_SELECTOR, ".js__product-link-for-product-id").get_attribute("href")
                         real_estate = RealEstate(
                             id=None,
