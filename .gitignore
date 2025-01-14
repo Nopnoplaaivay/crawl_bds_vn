@@ -1,0 +1,19 @@
+# IDE
+.idea
+geckodriver.log
+# venv
+venv
+
+# config
+*.env
+*.ini
+
+# cpython
+*__pycache__*
+
+# other
+temp
+
+
+build
+dist
