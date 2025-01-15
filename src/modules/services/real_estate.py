@@ -20,6 +20,7 @@ from src.common.consts import CommonConsts
 from src.modules.entities.real_estate import RealEstate
 from src.modules.repositories import RealEstateRepo
 from src.utils.logger import LOGGER
+from src.utils.selenium_utils import SeleUtils
 
 
 class RealEstateService:
@@ -42,7 +43,7 @@ class RealEstateService:
         options.add_argument("disable-gpu")
         service = Service(executable_path=ChromeDriverManager().install())
         driver = webdriver.Chrome(options=options, service=service)
-        driver.set_page_load_timeout(30)
+        driver.set_page_load_timeout(60)
         link_all = [
             f"{CommonConsts.BASE_URL}/{elem}" for elem in CommonConsts.REAL_ESTATE_STATUS
         ]
@@ -106,7 +107,7 @@ class RealEstateService:
                 '''
                 total_page_elem = driver.find_elements(By.CSS_SELECTOR, ".re__pagination-number")
                 total_page = int(total_page_elem[-1].text.replace('.', '')) if len(total_page_elem) > 0 else 1
-                LOGGER.info(f"{total_page}")
+                LOGGER.info(f"Total pages: {total_page}")
                 # for page in np.arange(1, total_page + 1, 1):
                 for page in np.arange(1, 3, 1):
                     # Click page button
@@ -133,97 +134,61 @@ class RealEstateService:
                     # real_estates_no_label = driver.find_elements(By.CSS_SELECTOR, "js__card.js__card-full-web.card-custom-listing-desktoppr-container.re__card-full.re__card-full-ads.re__card-full-no-label")
                     # real_estates = real_estates_diamond + real_estates_gold + real_estates_silver + real_estates_normal
 
-                    re_divs = driver.find_elements(By.CSS_SELECTOR, ".js__card.js__card-full-web")
-                    LOGGER.info(len(re_divs))
+                    re_divs = driver.find_elements(By.CSS_SELECTOR, ".re__srp-list .js__card.js__card-full-web")
+                    for idx, re in enumerate(re_divs):
+                        try:
+                            parent = re.find_element(By.XPATH, "..")
+                            if "re__srp-list" in parent.get_attribute("class"):
+                                # Get raw data
+                                re_title = SeleUtils.find_elem_by_css(re, ".re__card-info") 
+                                re_location = SeleUtils.find_elem_by_css(re, ".re__card-location")
+                                re_price = SeleUtils.find_elem_by_css(re, ".re__card-config-price.js__card-config-item")
+                                re_area = SeleUtils.find_elem_by_css(re, ".re__card-config-area.js__card-config-item")
+                                re_desc = SeleUtils.find_elem_by_css(re, ".re__card-description.js__card-description")
+                                re_url = SeleUtils.find_elem_by_css(re, ".js__product-link-for-product-id")
 
-
-                    # for re in real_estates:
-                    #     try:
-                    #         title = re.find_element(By.CSS_SELECTOR, ".pr-title.js__card-title").text
-                    #         location = re.find_element(By.CSS_SELECTOR, ".re__card-location").find_elements(By.CSS_SELECTOR, "span")[-1].text
-                    #         price = re.find_element(By.CSS_SELECTOR, ".re__card-config-price.js__card-config-item").text
-                    #         area = re.find_element(By.CSS_SELECTOR, ".re__card-config-area.js__card-config-item").text
-                    #         desc = re.find_element(By.CSS_SELECTOR, ".re__card-description.js__card-description").text
-                    #         url = re.find_element(By.CSS_SELECTOR, ".js__product-link-for-product-id").get_attribute("href")
-                            
-                    #         real_estate = RealEstate(
-                    #             status=real_estate_status,
-                    #             type=re_type,
-                    #             title=title,
-                    #             location=location,
-                    #             price=price,
-                    #             area=area,
-                    #             desc=desc,
-                    #             url=url
-                    #         )
-                    #         cls.repo.insert(real_estate)
-                    #     except Exception as e:
-                    #         LOGGER.error(f"Error crawling {re_type}: {e}")
-
+                                # Transform data
+                                data = {
+                                    "status": real_estate_status,
+                                    "type": re_type,
+                                    "title": re_title.get_attribute("title") if re_title else None,
+                                    "location": re_location.text.strip().replace("·", "").strip() if re_location else None,
+                                    "price": re_price.text.strip() if re_price else None,
+                                    "area": re_area.text.strip() if re_area else None,
+                                    "desc": re_desc.text.strip() if re_desc else None,
+                                    "url": re_url.get_attribute("href") if re_url else None
+                                }
+                                LOGGER.info(f"{idx + 1}: {data['url']}")
+                                
+                                # Insert data
+                                real_estate = RealEstate(
+                                    status=data["status"],
+                                    type=data["type"],
+                                    title=data["title"],
+                                    location=data["location"],
+                                    price=data["price"],
+                                    area=data["area"],
+                                    desc=data["desc"],
+                                    url=data["url"]
+                                )
+                                cls.repo.insert(real_estate)
+                        except Exception as e:
+                            LOGGER.error(f"Error crawling {re_type}: {e}")
 
                 '''
                 Navigate back to the status page: "nha-dat-ban" / "nha-dat-cho-thue"
                 '''
                 driver.get(link_all[i])
-
-
-
-            # total_page_str = driver.find_elements(By.CSS_SELECTOR, ".re__pagination-number")[-1].text
-            # total_page = int(total_page_str.replace('.', ''))
-            # LOGGER.info(f"Total page of {real_estate_type}: {total_page}")
-
-            # for page in np.arange(1, total_page + 1, 1):
-            #     # Click page button
-            #     try:
-            #         page_button_str = f".re__pagination-number[pid='{page}']"
-            #         WebDriverWait(driver, 10).until(
-            #             EC.presence_of_element_located((By.CSS_SELECTOR, page_button_str))
-            #         )
-            #         driver.find_element(By.CSS_SELECTOR, page_button_str).click()
-            #     except (
-            #         ElementClickInterceptedException, 
-            #         NoSuchElementException, 
-            #         StaleElementReferenceException
-            #     ):
-            #         LOGGER.error(f"Page {page} of {real_estate_type} not found")
-            #         continue
-
-            #     # Get list of real estate
-            #     real_estates = driver.find_elements(By.CSS_SELECTOR, ".js__card.js__card-full-web.pr-container.re__card-full.re__vip-diamond")
-            #     print(len(real_estates))
-            #     for re in real_estates:
-            #         # try:
-            #             title = re.find_element(By.CSS_SELECTOR, ".pr-title.js__card-title").text
-            #             location = re.find_element(By.CSS_SELECTOR, ".re__card-location").find_elements(By.CSS_SELECTOR, "span")[-1].text
-            #             price = re.find_element(By.CSS_SELECTOR, ".re__card-config-price.js__card-config-item").text
-            #             area = re.find_element(By.CSS_SELECTOR, ".re__card-config-area.js__card-config-item").text
-            #             desc = re.find_element(By.CSS_SELECTOR, ".re__card-description.js__card-description").text
-            #             url = re.find_element(By.CSS_SELECTOR, ".js__product-link-for-product-id").get_attribute("href")
-                        
-            #             real_estate = RealEstate(
-            #                 id=None,
-            #                 status=real_estate_type,
-            #                 type="not_crawl",
-            #                 title=title,
-            #                 location=location,
-            #                 price=price,
-            #                 area=area,
-            #                 desc=desc,
-            #                 url=url
-            #             )
-            #             cls.repo.insert(real_estate)
-            #         # except Exception as e:
-            #         #     LOGGER.error(f"Error: {e}")
         LOGGER.info("===== DONE =====")
 
     @staticmethod
     def get_filter_properties(driver):
-        re_filter_button = driver.find_element(By.CSS_SELECTOR, "div[data-default-value='Loại nhà đất']")
+        re_filter_button = SeleUtils.find_wait_elem_by_css(driver, "div[data-default-value='Loại nhà đất']")
         re_filter_button.click()
-        re_filter_box = driver.find_element(By.CSS_SELECTOR, ".re__listing-search-select-dropdown.re__multiple.js__listing-search-select-select-dropdown.re__show-fade-in")
-        re_elems = re_filter_box.find_elements(By.CSS_SELECTOR, "li")
-        re_apply_button = re_filter_box.find_element(By.CSS_SELECTOR, ".re__btn.re__btn-pr-solid--sm.js__listing-search-select-apply-button")
-        re_all_types_elem = re_elems[0]
+        re_filter_box = SeleUtils.find_elem_by_css(driver, ".re__listing-search-select-dropdown.re__multiple.js__listing-search-select-select-dropdown.re__show-fade-in")
+        re_elems = SeleUtils.find_elems_by_css(re_filter_box, "li")
+        re_apply_button = SeleUtils.find_elem_by_css(re_filter_box, ".re__btn.re__btn-pr-solid--sm.js__listing-search-select-apply-button")
+        re_all_types_elem = re_elems[0] if len(re_elems) > 0 else None
 
         return {
             "re_filter_button": re_filter_button,
