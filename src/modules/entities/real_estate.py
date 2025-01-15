@@ -3,8 +3,7 @@ from typing import Dict, Union
 class RealEstate:
     table_name = "real_estate"
 
-    def __init__(self, id, status, type, title, location, price, area, desc, url):
-        self.id = id
+    def __init__(self, status, type, title, location, price, area, desc, url):
         self.status = status
         self.type = type
         self.title = title
@@ -16,7 +15,6 @@ class RealEstate:
 
     def to_dict(self) -> Dict[str, Union[str, int]]:
         return {
-            "id": self.id,
             "status": self.status,
             "type": self.type,
             "title": self.title,
@@ -30,7 +28,6 @@ class RealEstate:
     @staticmethod
     def from_dict(data: Dict[str, Union[str, int]]) -> "RealEstate":
         return RealEstate(
-            id=data["id"],
             status=data["status"],
             type=data["type"],
             title=data["title"],
