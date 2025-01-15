@@ -13,6 +13,7 @@ from selenium.common.exceptions import (
     StaleElementReferenceException,
     TimeoutException
 )
+from selenium.webdriver.common.action_chains import ActionChains
 from webdriver_manager.chrome import ChromeDriverManager
 
 from src.common.consts import CommonConsts
@@ -35,6 +36,8 @@ class RealEstateService:
         options.add_argument("--disable-logging")  # Disable logging
         options.add_argument("--silent")  # Silent mode
         # options.add_argument("headless")
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
         options.add_argument("window-size=1920x1080")
         options.add_argument("disable-gpu")
         service = Service(executable_path=ChromeDriverManager().install())
@@ -44,7 +47,11 @@ class RealEstateService:
             f"{CommonConsts.BASE_URL}/{elem}" for elem in CommonConsts.REAL_ESTATE_TYPES
         ]
         for i in np.arange(0, len(link_all), 1):
-            real_estate_type = CommonConsts.REAL_ESTATE_TYPES[i]
+            real_estate_type = CommonConsts.REAL_ESTATE_TYPES.keys()[i]
+
+
+
+
             driver.get(link_all[i])
             time.sleep(2)
             total_page_str = driver.find_elements(By.CSS_SELECTOR, ".re__pagination-number")[-1].text
