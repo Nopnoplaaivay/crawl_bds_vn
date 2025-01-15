@@ -126,14 +126,15 @@ class RealEstateService:
                             continue
 
                     # Get list of real estate
-                    real_estates_diamond = driver.find_elements(By.CSS_SELECTOR, ".js__card.js__card-full-web.pr-container.re__card-full.re__vip-diamond")
-                    real_estates_gold = driver.find_elements(By.CSS_SELECTOR, ".js__card.js__card-full-web.re__boosting-cta-section-version-b.pr-container.re__card-full.re__vip-gold")
-                    real_estates_silver = driver.find_elements(By.CSS_SELECTOR, ".js__card.js__card-full-web.re__boosting-cta-section-version-b.pr-container.re__card-full.re__vip-silver")
-                    real_estates_normal = driver.find_elements(By.CSS_SELECTOR, ".js__card.js__card-full-web.re__boosting-cta-section-version-b.pr-container.re__card-full.re__vip-normal")
-                    # real_estates_normal = driver.find_elements(By.CSS_SELECTOR, "js__card.js__card-full-web.card-custom-listing-desktoppr-container.re__card-full.re__card-full-ads.re__card-full-no-label")
+                    # real_estates_diamond = driver.find_elements(By.CSS_SELECTOR, ".js__card.js__card-full-web.pr-container.re__card-full.re__vip-diamond")
+                    # real_estates_gold = driver.find_elements(By.CSS_SELECTOR, ".js__card.js__card-full-web.re__boosting-cta-section-version-b.pr-container.re__card-full.re__vip-gold")
+                    # real_estates_silver = driver.find_elements(By.CSS_SELECTOR, ".js__card.js__card-full-web.re__boosting-cta-section-version-b.pr-container.re__card-full.re__vip-silver")
+                    # real_estates_normal = driver.find_elements(By.CSS_SELECTOR, ".js__card.js__card-full-web.re__boosting-cta-section-version-b.pr-container.re__card-full.re__vip-normal")
+                    # real_estates_no_label = driver.find_elements(By.CSS_SELECTOR, "js__card.js__card-full-web.card-custom-listing-desktoppr-container.re__card-full.re__card-full-ads.re__card-full-no-label")
+                    # real_estates = real_estates_diamond + real_estates_gold + real_estates_silver + real_estates_normal
 
-                    real_estates = real_estates_diamond + real_estates_gold + real_estates_silver + real_estates_normal
-                    LOGGER.info(len(real_estates))
+                    re_divs = driver.find_elements(By.CSS_SELECTOR, ".js__card.js__card-full-web")
+                    LOGGER.info(len(re_divs))
 
 
                     # for re in real_estates:
