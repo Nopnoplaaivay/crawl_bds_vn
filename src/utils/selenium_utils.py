@@ -7,7 +7,7 @@ import random
 
 class SeleUtils:
     @staticmethod
-    def find_elem_by_css(driver_element, css: str):
+    def find_elem_by_css(driver_element, css: str) :
         try:
             return driver_element.find_element(By.CSS_SELECTOR, css)
         except NoSuchElementException:

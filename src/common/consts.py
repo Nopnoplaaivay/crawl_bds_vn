@@ -11,3 +11,4 @@ class CommonConsts:
         "nha-dat-cho-thue"
     ]
     DATA_PATH = os.path.join(ROOT_FOLDER, "data")
+    TEMP_PATH = os.path.join(ROOT_FOLDER, "tmp")
