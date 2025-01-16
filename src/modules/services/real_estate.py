@@ -30,20 +30,25 @@ class RealEstateService:
     def crawl(cls):
         cls.repo.initialize_db()
 
-        # Set up Chrome driver
+        '''
+        SETUP CHROME DRIVER
+        '''
         options = webdriver.ChromeOptions()
         options.add_experimental_option("excludeSwitches", ["enable-logging"])
         options.add_argument("--log-level=3")  
         options.add_argument("--disable-logging")  
         options.add_argument("--silent") 
         # options.add_argument("headless")
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
         options.add_argument("window-size=1920x1080")
         options.add_argument("disable-gpu")
         service = Service(executable_path=ChromeDriverManager().install())
         driver = webdriver.Chrome(options=options, service=service)
         driver.set_page_load_timeout(60)
+
+
+        '''
+        ITERATE THROUGH REAL ESTATE STATUS: "nha-dat-ban" / "nha-dat-cho-thue"
+        '''
         link_all = [
             f"{CommonConsts.BASE_URL}/{elem}" for elem in CommonConsts.REAL_ESTATE_STATUS
         ]
@@ -108,8 +113,8 @@ class RealEstateService:
                 total_page_elem = driver.find_elements(By.CSS_SELECTOR, ".re__pagination-number")
                 total_page = int(total_page_elem[-1].text.replace('.', '')) if len(total_page_elem) > 0 else 1
                 LOGGER.info(f"Total pages: {total_page}")
-                # for page in np.arange(1, total_page + 1, 1):
-                for page in np.arange(1, 3, 1):
+                for page in np.arange(1, total_page + 1, 1):
+                # for page in np.arange(1, 3, 1):
                     # Click page button
                     if total_page > 1:
                         try:
