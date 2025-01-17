@@ -1,6 +1,7 @@
 import time
 import random
-import json
+import pandas as pd
+import re
 from typing import Dict, Union
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -26,6 +27,19 @@ from src.utils.selenium_utils import SeleUtils
 class RealEstateService(BaseService):
     repo = RealEstateRepo
 
+    '''
+    ANALYSIS COMPLETE PIPELINE 
+    '''
+    @classmethod
+    def run_pipeline(cls) -> None:
+        raw_data = cls.extract()
+        tf_data = cls.transform(raw_data)
+        cls.analyze_visualize(tf_data)
+
+
+    '''
+    CRAWLING PROCESS
+    '''
     @classmethod
     def crawl(cls) -> None:
         '''
@@ -209,6 +223,91 @@ class RealEstateService(BaseService):
         driver.quit()
         LOGGER.info("===== DONE =====")
 
+
+    @classmethod
+    def extract(cls) -> pd.DataFrame:
+        LOGGER.info("===== EXTRACT =====")
+        data = cls.repo.get_all()
+        df = pd.DataFrame(data)
+        df.to_csv(f"{CommonConsts.DATA_PATH}/real_estate.csv", index=False)
+        LOGGER.info(f"Total records: {len(data)}")
+        return df
+    
+
+    @classmethod
+    def transform(cls, raw_data: pd.DataFrame) -> pd.DataFrame:
+        LOGGER.info("===== TRANSFORM =====")
+        tf_data = raw_data[['status', 'type', 'title', 'location', 'price', 'area']].copy()
+        tf_data.drop_duplicates(subset=['title'], keep='first', inplace=True)
+        tf_data.reset_index(drop=True, inplace=True)
+        LOGGER.info(f"Total records after dropping duplicate titles: {len(tf_data)}")
+
+        '''
+        TRANSFORM PRICE
+        '''
+        def extract_price(price):
+            match = re.search(r'[\d,\.]+', price)
+            if match:
+                numeric_part = match.group(0).replace(',', '')
+                return float(numeric_part)
+            return None
+
+        # Apply the function to extract numeric part
+        tf_data['numeric_price'] = tf_data['price'].apply(extract_price)
+        tf_data['unit'] = tf_data['price'].str.replace(r'[\d,\,\.]+', '', regex=True).str.strip()
+        tf_data['price_vnd'] = tf_data.apply(
+            lambda row: row['numeric_price'] * CommonConsts.UNIT_MULTIPLIERS.get(row['unit'], 1) if row['numeric_price'] is not None else None,
+            axis=1
+        )
+        # Get unique unit in the 'price' column
+        unique_price_units = tf_data['unit'].unique()
+        LOGGER.info(f"Unique price units: {unique_price_units}")
+        
+        '''
+        TRANSFORM AREA
+        '''
+        # Apply the function to extract numeric part
+        def extract_area(area_str):
+            if isinstance(area_str, str): 
+                match = re.search(r'\d+', area_str)
+                if match:
+                    return int(match.group(0))  
+            return None  
+        tf_data['numeric_area'] = tf_data['area'].apply(extract_area)
+        tf_data = tf_data[tf_data['numeric_area'] > 0]
+        tf_data['area_unit'] = tf_data['area'].str.replace(r'[\d,\,\.]+', '', regex=True).str.strip()
+        # Get unique unit in the 'area' column
+        unique_area_units = tf_data['area'].str.replace(r'[\d,\,\.]+', '', regex=True).str.strip().unique()
+        LOGGER.info(f"Unique area units: {unique_area_units}")
+
+        '''
+        TRANSFORM LOCATION
+        '''
+        tf_data['location'] = tf_data['location'].apply(lambda x: x.split(', ')[-1])
+        LOGGER.info(f"Unique locations: {tf_data['location'].unique()}")
+
+
+        '''
+        DROP MISSING VALUES AND COLUMNS
+        '''
+        tf_data.drop(columns=['title', 'price', 'numeric_price', 'area'], inplace=True)
+        tf_data.dropna(inplace=True)
+        LOGGER.info(f"Total records after dropping missing values: {len(tf_data)}")
+        tf_data.to_csv(f"{CommonConsts.DATA_PATH}/real_estate_transformed.csv", index=False)
+
+        LOGGER.info(f"\n{tf_data.head().to_string()}")
+        return tf_data
+    
+
+    @classmethod
+    def analyze_visualize(cls, tf_data: pd.DataFrame) -> None:
+        LOGGER.info("===== ANALYZE & VISUALIZE =====")
+        # LOGGER.info(f"\n{tf_data.describe().to_string()}")
+        LOGGER.info("===== DONE =====")
+
+
+
+
     @staticmethod
     def get_filter_properties(driver) -> Dict[str, Union[WebElement, list]]:
         re_filter_button = SeleUtils.find_wait_elem_by_css(driver, "div[data-default-value='Loại nhà đất']")
@@ -225,12 +324,3 @@ class RealEstateService(BaseService):
             "re_apply_button": re_apply_button,
             "re_all_types_elem": re_all_types_elem
         }
-
-
-# List of real estate levels for future use
-# real_estates_diamond = driver.find_elements(By.CSS_SELECTOR, ".js__card.js__card-full-web.pr-container.re__card-full.re__vip-diamond")
-# real_estates_gold = driver.find_elements(By.CSS_SELECTOR, ".js__card.js__card-full-web.re__boosting-cta-section-version-b.pr-container.re__card-full.re__vip-gold")
-# real_estates_silver = driver.find_elements(By.CSS_SELECTOR, ".js__card.js__card-full-web.re__boosting-cta-section-version-b.pr-container.re__card-full.re__vip-silver")
-# real_estates_normal = driver.find_elements(By.CSS_SELECTOR, ".js__card.js__card-full-web.re__boosting-cta-section-version-b.pr-container.re__card-full.re__vip-normal")
-# real_estates_no_label = driver.find_elements(By.CSS_SELECTOR, "js__card.js__card-full-web.card-custom-listing-desktoppr-container.re__card-full.re__card-full-ads.re__card-full-no-label")
-# real_estates = real_estates_diamond + real_estates_gold + real_estates_silver + real_estates_normal
