@@ -5,6 +5,7 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from pathlib import Path
 from typing import Dict, Union
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -34,13 +35,13 @@ class RealEstateService(BaseService):
     COMPLETE ETL PIPELINE 
     '''
     @classmethod
-    def run_pipeline(cls, analysis_method="overview") -> None:
+    def run_pipeline(cls, analysis_method="overview", city="Hà Nội") -> Union[None, Dict[str, str]]:
         raw_data = cls.extract()
         tf_data = cls.transform(raw_data)
         if analysis_method == "overview":
-            cls.overview_analyze(tf_data)
+            cls.overview_analyze(df=tf_data)
         elif analysis_method == "city":
-            cls.city_analyze(tf_data, "Hồ Chí Minh")
+            return cls.city_analyze(df=tf_data, city=city)
 
     '''
     CRAWLING PROCESS
@@ -265,7 +266,7 @@ class RealEstateService(BaseService):
             axis=1
         )
         # Get unique unit in the 'price' column
-        unique_price_units = tf_data['unit'].unique()
+        # unique_price_units = tf_data['unit'].unique()
         # LOGGER.info(f"Unique price units: {unique_price_units}")
         
         '''
@@ -282,7 +283,7 @@ class RealEstateService(BaseService):
         tf_data = tf_data[tf_data['numeric_area'] > 0]
         tf_data['area_unit'] = tf_data['area'].str.replace(r'[\d,\,\.]+', '', regex=True).str.strip()
         # Get unique unit in the 'area' column
-        unique_area_units = tf_data['area'].str.replace(r'[\d,\,\.]+', '', regex=True).str.strip().unique()
+        # unique_area_units = tf_data['area'].str.replace(r'[\d,\,\.]+', '', regex=True).str.strip().unique()
         # LOGGER.info(f"Unique area units: {unique_area_units}")
 
         '''
@@ -300,26 +301,45 @@ class RealEstateService(BaseService):
         '''
         CALCULATE PRICE PER M2
         '''
-        # only for unit = 'tỷ' 'triệu' 'nghìn'
         total_price_units = ['tỷ', 'triệu', 'nghìn']
         price_per_m2_units = ['triệu/m²', 'nghìn/m²']
-        tf_data['price_per_m2'] = tf_data.apply(
-            lambda row: row['price_vnd'] / row['numeric_area'] if row['unit'] in total_price_units else (row['price_vnd'] if row['unit'] in price_per_m2_units else None),
-            axis=1
-        )
+        def calculate_price_per_m2(row):
+            if row['unit'] in total_price_units:
+                return row['price_vnd'] / row['numeric_area'] / 1e6
+            elif row['unit'] in price_per_m2_units:
+                return row['price_vnd'] / 1e6
+            return None
+
+        tf_data['price_per_m2'] = tf_data.apply(calculate_price_per_m2, axis=1)
 
         # LOGGER.info(f"Total records after dropping missing values: {len(tf_data)}")
         tf_data.to_csv(f"{CommonConsts.DATA_PATH}/real_estate_transformed.csv", index=False)
         # LOGGER.info(f"\n{tf_data.head().to_string()}")
         return tf_data
     
-
+    '''
+    OVERVIEW ANALYSIS
+    '''
     @classmethod
     def overview_analyze(cls, df: pd.DataFrame) -> None:
         LOGGER.info("===== ANALYZE & VISUALIZE =====")
         LOGGER.info("Analyzing overview...")
         df.dropna(inplace=True)
 
+        img_paths = [
+            f'{CommonConsts.IMG_PATH}/count_by_type.png',
+            f'{CommonConsts.IMG_PATH}/count_by_location.png',
+            f'{CommonConsts.IMG_PATH}/price_per_m2_distribution.png'
+        ]
+        # Check if the images already exist, if all 3 images exist, return
+        skip = True
+        for img_path in img_paths:
+            if not Path(img_path).exists():
+                skip = False
+                break
+        if skip:
+            return
+        
         '''
         ANALYZE TYPE COUNT
         '''
@@ -329,9 +349,8 @@ class RealEstateService(BaseService):
         plt.title('Số lượng bất động sản theo loại hình')
         plt.ylabel('Loại hình')
         plt.xlabel('Số lượng')
-        # plt.xticks(rotation=90)
         plt.tight_layout()
-        plt.savefig(f'{CommonConsts.IMG_PATH}/count_by_type.png')
+        plt.savefig(img_paths[0])
 
         '''
         ANALYZE LOCATION COUNT
@@ -342,40 +361,28 @@ class RealEstateService(BaseService):
         plt.title('Số lượng bất động sản theo địa điểm')
         plt.ylabel('Địa điểm')
         plt.xlabel('Số lượng')
-        # plt.xticks(rotation=90)
         plt.tight_layout()
-        plt.savefig(f'{CommonConsts.IMG_PATH}/count_by_location.png')
+        plt.savefig(img_paths[1])
 
         '''
-        ANALYZE PRICE PER M2
+        ANALYZE PRICE PER M2 DISTRIBUTION BY TYPE
         '''
         plt.figure(figsize=(15, 25))
         plt.style.use('_mpl-gallery-nogrid')
 
         property_types = df['type'].unique()
-
         n_types = len(property_types)
         n_cols = 2
         n_rows = (n_types + 1) // 2
-
-        def remove_outliers(data):
-            Q1 = data.quantile(0.25)
-            Q3 = data.quantile(0.75)
-            IQR = Q3 - Q1
-            lower_bound = Q1 - 1.5 * IQR
-            upper_bound = Q3 + 1.5 * IQR
-            return data[(data >= lower_bound) & (data <= upper_bound)]
 
         # Tạo subplot cho từng loại bất động sản
         for idx, prop_type in enumerate(property_types, 1):
             plt.subplot(n_rows, n_cols, idx)
             data = df[df['type'] == prop_type]['price_per_m2']
             
-            cleaned_data = remove_outliers(data)
+            cleaned_data = cls.remove_outliers(data)
             
-            # Tính số bins phù hợp dựa trên Sturges' rule
-            n_bins = int(np.log2(len(cleaned_data)) + 1)
-            sns.histplot(data=cleaned_data, bins=n_bins, color='lightblue', alpha=0.7)
+            sns.histplot(data=cleaned_data, bins=10, color='lightblue', alpha=0.7)
             
             # Tính các thông số thống kê từ dữ liệu gốc (không xử lý outliers)
             mean_val = data.mean()
@@ -383,7 +390,7 @@ class RealEstateService(BaseService):
             std_val = data.std()
             
             # Thêm thông tin thống kê
-            stats_text = f'Mean: {mean_val/1e9:.2f}\nMedian: {median_val/1e9:.2f}\nStd: {std_val/1e9:.2f}'
+            stats_text = f'Mean: {mean_val:.2f}\nMedian: {median_val:.2f}\nStd: {std_val:.2f}'
             plt.text(0.95, 0.95, stats_text,
                     transform=plt.gca().transAxes,
                     verticalalignment='top',
@@ -391,7 +398,7 @@ class RealEstateService(BaseService):
                     bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
             
             # Định dạng trục x thành triệu đồng
-            plt.gca().xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x/1e6:.1f}'))
+            plt.gca().xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.1f}'))
             
             # Đặt tiêu đề và nhãn
             plt.title(prop_type, pad=20, fontsize=12)
@@ -408,54 +415,112 @@ class RealEstateService(BaseService):
 
         # Thêm tiêu đề chung cho figure
         plt.suptitle('Phân phối giá/m² theo loại bất động sản', y=1.02, fontsize=14)
-        plt.savefig(f'{CommonConsts.IMG_PATH}/price_per_m2_distribution.png')
+        plt.savefig(img_paths[2])
 
         LOGGER.info("===== DONE =====")
 
-
+    '''
+    ANALYZE BY CITY
+    '''
     @classmethod
     def city_analyze(cls, df: pd.DataFrame, city: str) -> str:
         LOGGER.info("===== ANALYZE CITY =====")
         LOGGER.info(f"Analyzing {city}...")
         formatted_city = cls.format_city_name(city)
         city_df = df[df['location'] == city]
+        city_df.dropna(inplace=True)
         if city_df.empty:
             LOGGER.error(f"No data found for {city}")
             return None
 
         '''
-        ANALYZE PRICE PER M2
+        CHECK IF IMAGES ALREADY EXIST
         '''
-        plt.figure(figsize=(10, 6))
-        sns.histplot(data=city_df['price_per_m2'], bins=20, color='lightblue', alpha=0.7)
-        plt.title(f'Phân phối giá/m² tại {city}')
-        plt.xlabel('Giá/m² (triệu VNĐ)')
-        plt.ylabel('Số lượng')
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        fig_path_1 = f'/static/imgs/price_per_m2_{formatted_city}.png'
-        plt.savefig(f"{CommonConsts.IMG_PATH}/price_per_m2_{formatted_city}.png")
+        img_paths = [
+            f'{CommonConsts.IMG_PATH}/mean_price_per_m2_by_type_{formatted_city}.png',
+            f'{CommonConsts.IMG_PATH}/price_per_m2_by_type_{formatted_city}.png'
+        ]
+        fig_path_1 = f'/static/imgs/mean_price_per_m2_by_type_{formatted_city}.png'
+        fig_path_2 = f'/static/imgs/price_per_m2_by_type_{formatted_city}.png'
+        analysis_result = {
+            "city": city,
+            "fig_path_1": fig_path_1,
+            "fig_path_2": fig_path_2
+        }
+        skip = True
+        for img_path in img_paths:
+            if not Path(img_path).exists():
+                skip = False
+                break
+        if skip:
+            LOGGER.info("===== DONE =====")
+            return analysis_result
+    
 
         '''
-        ANALYZE PRICE PER M2 BY TYPE
+        ANALYZE MEAN PRICE PER M2 BY TYPE
         '''
         plt.figure(figsize=(10, 6))
-        sns.boxplot(data=city_df, x='type', y='price_per_m2',  palette='Blues')
-        plt.title(f'Giá/m² theo loại hình tại {city}')
+        sns.barplot(data=city_df, x='type', y='price_per_m2', ci=None, palette='Blues')
+        plt.title(f'Giá/m² trung bình theo loại hình tại {city}')
         plt.xlabel('Loại hình')
         plt.ylabel('Giá/m² (triệu VNĐ)')
         plt.xticks(rotation=90)
         plt.tight_layout()
-        fig_path_2 = f'/static/imgs/price_per_m2_by_type_{formatted_city}.png'
-        plt.savefig(f"{CommonConsts.IMG_PATH}/price_per_m2_by_type_{formatted_city}.png")
+        plt.savefig(img_paths[0])
 
-        analysis_result = {
-            "analysis_result": {
-                "city": city,
-                "fig_path_1": fig_path_1,
-                "fig_path_2": fig_path_2
-            }
-        }
+
+        '''
+        ANALYZE PRICE PER M2 DISTRIBUTION BY TYPE
+        '''
+        plt.figure(figsize=(15, 25))
+        plt.style.use('_mpl-gallery-nogrid')
+
+        property_types = df['type'].unique()
+        n_types = len(property_types)
+        n_cols = 2
+        n_rows = (n_types + 1) // 2
+
+        # Tạo subplot cho từng loại bất động sản
+        for idx, prop_type in enumerate(property_types, 1):
+            plt.subplot(n_rows, n_cols, idx)
+            data = df[df['type'] == prop_type]['price_per_m2']
+            
+            cleaned_data = cls.remove_outliers(data)
+            
+            sns.histplot(data=cleaned_data, bins=10, color='lightblue', alpha=0.7)
+            
+            # Tính các thông số thống kê từ dữ liệu gốc (không xử lý outliers)
+            mean_val = data.mean()
+            median_val = data.median()
+            std_val = data.std()
+            
+            # Thêm thông tin thống kê
+            stats_text = f'Mean: {mean_val:.2f}\nMedian: {median_val:.2f}\nStd: {std_val:.2f}'
+            plt.text(0.95, 0.95, stats_text,
+                    transform=plt.gca().transAxes,
+                    verticalalignment='top',
+                    horizontalalignment='right',
+                    bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+            plt.gca().xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.1f}'))
+            
+            # Đặt tiêu đề và nhãn
+            plt.title(prop_type, pad=20, fontsize=12)
+            plt.xlabel('Giá/m² (triệu VNĐ)')
+            plt.ylabel('Số lượng')
+            plt.xticks(rotation=45)
+
+            # Điều chỉnh giới hạn trục y để có khoảng trống cho stats box
+            ylim = plt.gca().get_ylim()
+            plt.gca().set_ylim(ylim[0], ylim[1] * 1.2)
+
+        # Điều chỉnh khoảng cách giữa các subplot
+        plt.tight_layout()
+
+        # Thêm tiêu đề chung cho figure
+        plt.suptitle('Phân phối giá/m² theo loại bất động sản', y=1.02, fontsize=14)
+        plt.savefig(img_paths[1])
+
         LOGGER.info("===== DONE =====")
         return analysis_result
 
@@ -482,3 +547,12 @@ class RealEstateService(BaseService):
     # Remove special characters and replace spaces with underscores
         formatted_name = re.sub(r'[^\w\s]', '', city_name).replace(' ', '_').lower()
         return formatted_name
+    
+    @staticmethod  
+    def remove_outliers(data):
+        Q1 = data.quantile(0.25)
+        Q3 = data.quantile(0.75)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+        return data[(data >= lower_bound) & (data <= upper_bound)]

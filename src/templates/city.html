@@ -44,6 +44,7 @@
             border: none;
             border-radius: 4px;
             cursor: pointer;
+            margin-left: 10px;
         }
         button:hover {
             background-color: #64CCC5;
@@ -51,6 +52,11 @@
         h2 {
             text-align: center;
             margin-top: 20px;
+            color: #176B87;
+        }
+        h3 {
+            text-align: center;
+            margin-top: 16px;
             color: #176B87;
         }
         img {
@@ -74,10 +80,10 @@
     </form>
 
     {% if analysis_result %}
-    <h2>Analysis for City: {{ analysis_result.city }}</h2>
-    <p>{{ analysis_result.fig_path_1 }}</p>
-    <p>{{ analysis_result.fig_path_2 }}</p>
+    <h2>Phân tích giá Bất động sản tại {{ analysis_result.city }}</h2>
+    <h3>Giá trung bình bất động sản theo loại hình</h3>
     <img src="{{ analysis_result.fig_path_1 }}" alt="Average Price per m2">
+    <h3>Giá trên mỗi mét vuông theo loại hình</h3>
     <img src="{{ analysis_result.fig_path_2 }}" alt="Type Distribution">
     {% endif %}
 </body>
