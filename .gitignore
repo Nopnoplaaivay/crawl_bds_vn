@@ -16,5 +16,3 @@ tmp
 # data
 *.db
 
-# imgs
-static/imgs
