@@ -4,7 +4,9 @@ class CommonConsts:
     ROOT_FOLDER = os.path.abspath(os.path.join(os.path.abspath(__file__), 2 * "../"))
     DATA_PATH = os.path.join(ROOT_FOLDER, "data")
     TEMP_PATH = os.path.join(ROOT_FOLDER, "tmp")
-    
+    STATIC_PATH = os.path.join(ROOT_FOLDER, "static")
+    TEMPLATE_PATH = os.path.join(ROOT_FOLDER, "templates")
+    IMG_PATH = os.path.join(STATIC_PATH, "imgs")
     
     TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
     CRAWLING_DAY_FORMAT = "%Y-%m-%d"

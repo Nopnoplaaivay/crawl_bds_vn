@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real Estate Analysis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            background-color: #001C30;
+            color: #DAFFFB;
+            padding: 20px 0;
+            margin: 0;
+        }
+        form {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+        }
+        label {
+            margin-right: 10px;
+            font-size: 1.2em;
+            color: #176B87;
+        }
+        input[type="text"] {
+            padding: 5px;
+            font-size: 1em;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 5px 10px;
+            font-size: 1em;
+            color: #001C30;
+            background-color: #DAFFFB;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #64CCC5;
+        }
+        h2 {
+            text-align: center;
+            margin-top: 20px;
+            color: #176B87;
+        }
+        img {
+            display: block;
+            margin: 20px auto;
+            max-width: 90%;
+            height: auto;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>Real Estate Analysis</h1>
+
+    <form action="/" method="post">
+        <label for="city">Enter City:</label>
+        <input type="text" id="city" name="city">
+        <button type="submit">Analyze</button>
+    </form>
+
+    {% if analysis_result %}
+    <h2>Analysis for City: {{ analysis_result.city }}</h2>
+    <p>{{ analysis_result.fig_path_1 }}</p>
+    <p>{{ analysis_result.fig_path_2 }}</p>
+    <img src="{{ analysis_result.fig_path_1 }}" alt="Average Price per m2">
+    <img src="{{ analysis_result.fig_path_2 }}" alt="Type Distribution">
+    {% endif %}
+</body>
+</html>
